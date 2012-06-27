@@ -159,7 +159,7 @@ def get_fss_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
 
     # Remove data during times of known bad or anomalous data (works as of
     # Ska.engarchive 0.19.1)
-    x.filter_bad_times()
+    x.filter_bad_times(table=bad_times)
 
     # Select data only in a limited pitch range
     ok = ((x['pitch'].vals > pitch0) &
