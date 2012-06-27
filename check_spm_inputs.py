@@ -120,7 +120,8 @@ def plot_spm_input_errs(out, savefigs=False):
         savefig('spm_something.png')
 
 def plot_css_errs_by_year(out, savefigs=False):
-    print('Warning:  These plots assume a start time of 2000:001')
+    if min(out['times']) > 63158464:
+        print('Warning:  plot_css_errs_by_year assumes a start time of 2000:001')
     ok = ones(len(out)).astype(bool)
     times= out['times'][ok]
     css_pitch_err = out['pitch_css'][ok] - out['pitch'][ok]

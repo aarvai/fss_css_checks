@@ -53,7 +53,10 @@ def plot_pitches(out, angle_err_lim=8.0, savefigs=False):
    
    
 def plot_temps(out, angle_err_lim=8.0, savefigs=False):
-    print('Warning:  These plots assume 138 < pitch < 140.5 and data from 2011:001 - 2012:150')
+    if (min(out['pitch']) < 138 or max(out['pitch'] > 140.5) or 
+            min(out['times']) < 410140866 or min(out['times']) > 410313666 or 
+            max(out['times']) < 454636866 or max(out['times']) > 454723266):
+        print('Warning:  plot_temps assumes 138 < pitch < 140.5 and data from 2011:001 - 2012:150')
     times= out['times']
     bkt_temp1 = out['bkt_temp1']
     bkt_temp2 = out['bkt_temp2']
@@ -98,7 +101,8 @@ def plot_temps(out, angle_err_lim=8.0, savefigs=False):
 
 
 def plot_binary(out, angle_err_lim=8.0, savefigs=False):
-    print('Warning:  This plot should only be used when interp=4.1 sec')
+    if min(diff(out['times'])) > 4.2 or min(diff(out['times'])) < 4.0:
+        print('Warning:  plot_binary should only be used when interp=4.1 sec')
     alpha_err = out['alpha'] - out['roll']
     bad = abs(alpha_err) > angle_err_lim
     alpha_raw = out['alpha_raw'].tolist()
@@ -137,7 +141,9 @@ def plot_binary(out, angle_err_lim=8.0, savefigs=False):
     ylim((0,100))
     if savefigs==True:  
         savefig('bit_analysis_gen.png')
-    
+    ylim((0,10))
+    if savefigs==True:  
+        savefig('bit_analysis_gen_zoom.png')    
     
 def get_fss_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
              pitch0=134, pitch1=144):
