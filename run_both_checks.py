@@ -1,4 +1,7 @@
+from os import chdir
+
 execfile('check_fss.py')
+chdir('plots')
 print('fetching fss data')
 fss_data = get_fss_data()
 print('generating fss pitch plots')
@@ -10,8 +13,10 @@ plot_temps(fss_temp_binary_data, savefigs=True)
 print('generating fss bit analysis plots')
 plot_binary(fss_temp_binary_data, savefigs=True)
 close('all')
+chdir('..')
 
 execfile('check_spm_inputs.py')
+chdir('plots')
 print('fetching spm input data')
 spm_data = get_spm_data()
 print('generating fss and css error plots')
@@ -19,3 +24,4 @@ plot_spm_input_errs(spm_data, savefigs=True)
 print('generating css error plots by year')
 plot_css_errs_by_year(spm_data, savefigs=True)
 close('all')
+chdir('..')
