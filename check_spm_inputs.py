@@ -28,20 +28,42 @@ def plot_spm_input_errs(out, savefigs=False):
     print(sum(sun_prs))
     
     #Plot FSS Errors vs Time
-    figure(1)
+    figure()
     plot_cxctime(times[sun_prs & ~spm_act], fss_err[sun_prs & ~spm_act], 'b.', 
                  mec='b', label='SPM Disabled')
     plot_cxctime(times[sun_prs & spm_act], fss_err[sun_prs & spm_act], 'r.', 
                  mec='r', label='SPM Enabled')
-    legend(loc='upperleft')
+    legend(loc='upper left')
     grid()
     ylabel('FSS Error [deg]')
-    title('FSS Error (with Sun Presence) \n fed into Sun Position Monitor')    
+    title('Total FSS Error (with Sun Presence) \n fed into Sun Position Monitor')    
     if savefigs==True:
         savefig('spm_fss_errors_vs_time.png')
-        
+    
+    figure()
+    subplot(2, 1, 1)
+    plot_cxctime(times[sun_prs & ~spm_act], fss_roll_err[sun_prs & ~spm_act], 'b.', 
+                 mec='b', label='SPM Disabled')
+    plot_cxctime(times[sun_prs & spm_act], fss_roll_err[sun_prs & spm_act], 'r.', 
+                 mec='r', label='SPM Enabled')
+    legend(loc='upper left')
+    grid()
+    ylabel('FSS Roll Error [deg]')
+    title('FSS Roll and Pitch Errors (with Sun Presence) \n fed into Sun Position Monitor')    
+    subplot(2, 1, 2)
+    plot_cxctime(times[sun_prs & ~spm_act], fss_pitch_err[sun_prs & ~spm_act], 'b.', 
+                 mec='b', label='SPM Disabled')
+    plot_cxctime(times[sun_prs & spm_act], fss_pitch_err[sun_prs & spm_act], 'r.', 
+                 mec='r', label='SPM Enabled')
+    legend(loc='upper left')
+    grid()
+    ylabel('FSS Pitch Error [deg]')
+    if savefigs==True:
+        savefig('spm_fss_errors_vs_time2.png')
+
+    
     #Plot CSS Errors vs Time
-    figure(2)
+    figure()
     plot_cxctime(times[sun_prs & ~spm_act], css_err[sun_prs & ~spm_act], 'b.',
                  mec='b', label='SPM Disabled')
     plot_cxctime(times[sun_prs & spm_act], css_err[sun_prs & spm_act], 'r.',
@@ -49,12 +71,33 @@ def plot_spm_input_errs(out, savefigs=False):
     legend(loc='upper left')
     grid()
     ylabel('CSS Error [deg]')
-    title('CSS Error (with FSS Sun Presence) \n fed into Sun Position Monitor') 
+    title('Total CSS Error (with FSS Sun Presence) \n fed into Sun Position Monitor') 
     if savefigs==True:
         savefig('spm_css_errors_vs_time.png')
-        
+    
+    figure()
+    subplot(2, 1, 1)
+    plot_cxctime(times[sun_prs & ~spm_act], css_roll_err[sun_prs & ~spm_act], 'b.', 
+                 mec='b', label='SPM Disabled')
+    plot_cxctime(times[sun_prs & spm_act], css_roll_err[sun_prs & spm_act], 'r.', 
+                 mec='r', label='SPM Enabled')
+    legend(loc='upper left')
+    grid()
+    ylabel('CSS Roll Error [deg]')
+    title('CSS Roll and Pitch Errors (with Sun Presence) \n fed into Sun Position Monitor')    
+    subplot(2, 1, 2)
+    plot_cxctime(times[sun_prs & ~spm_act], css_pitch_err[sun_prs & ~spm_act], 'b.', 
+                 mec='b', label='SPM Disabled')
+    plot_cxctime(times[sun_prs & spm_act], css_pitch_err[sun_prs & spm_act], 'r.', 
+                 mec='r', label='SPM Enabled')
+    legend(loc='upper left')
+    grid()
+    ylabel('CSS Pitch Error [deg]')
+    if savefigs==True:
+        savefig('spm_css_errors_vs_time2.png')    
+    
     #Plot CSS Errors vs Attitude
-    figure(3)
+    figure()
     scatter(roll, pitch, c=css_err, edgecolors='none')
     c = colorbar()
     c.set_label('CSS Error [deg]')
@@ -66,7 +109,7 @@ def plot_spm_input_errs(out, savefigs=False):
         savefig('spm_css_errors_vs_att.png')
         
     #Plot Attitudes vs Time
-    figure(4)
+    figure()
     scatter(css_roll_err, css_pitch_err, c=times, edgecolors='none')
     c = colorbar()
     xlabel('Roll (deg)')
@@ -76,7 +119,7 @@ def plot_spm_input_errs(out, savefigs=False):
     if savefigs==True:
         savefig('spm_something.png')
 
-def plot_css_by_year(out, savefigs=False):
+def plot_css_errs_by_year(out, savefigs=False):
     print('Warning:  These plots assume a start time of 2000:001')
     ok = ones(len(out)).astype(bool)
     times= out['times'][ok]
@@ -93,33 +136,37 @@ def plot_css_by_year(out, savefigs=False):
         i = (times > t) & (times < t + dt)
       
         figure()
-        scatter(roll, pitch, c=css_roll_err, edgecolors='none')
+        scatter(roll[i], pitch[i], c=css_roll_err[i], edgecolors='none')
         title(str(2000 + yr) + ' CSS Roll Errors')
         xlabel('Roll Angle [deg]')
         ylabel('Pitch Angle [deg]')
-        colorbar()
-        #clim([0.1,0.5])
+        c = colorbar()
+        clim([floor(min(css_roll_err)), ceil(max(css_roll_err))])
+        c.set_label('CSS Roll Error [deg]')
         xlim([-30,30])
         ylim([20,200])
+        grid()
         savefig('css_roll_errors_' + str(yr+2000) + '.png')
         close()
         
         figure()
-        scatter(roll, pitch, c=css_pitch_err, edgecolors='none')
+        scatter(roll[i], pitch[i], c=css_pitch_err[i], edgecolors='none')
         title(str(2000 + yr) + ' FSS Pitch Errors')
         xlabel('Roll Angle [deg]')
         ylabel('Pitch Angle [deg]')
-        colorbar()
-        #clim([-.5,2])
+        c = colorbar()
+        clim([floor(min(css_pitch_err)), ceil(max(css_pitch_err))])
+        c.set_label('CSS Pitch Error [deg]')
         xlim([-25,20])
         ylim([40,160])
+        grid()
         savefig('css_pitch_errors_' + str(yr+2000) + '.png')
         close()
         
         t = t + dt
         yr = yr + 1
     
-def get_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
+def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
              pitch0=45, pitch1=180):
     msids = ('aopssupm', 'aopcadmd', 'aoacaseq', 'pitch', 'roll',
              'aoalpang', 'aobetang', 'aoalpsun', 'aobetsun',
@@ -175,7 +222,8 @@ def get_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
     out['kalman'][:] = ((x['aoacaseq'].vals[ok] == 'KALM') &
                         (x['aopcadmd'].vals[ok] == 'NPNT'))
     return out
-        
+
+
 def filter_bad_times(msid_self, start=None, stop=None, table=None):
     """Filter out intervals of bad data in the MSID object.
 
@@ -206,7 +254,7 @@ def filter_bad_times(msid_self, start=None, stop=None, table=None):
         bad_times = asciitable.read(table, Reader=asciitable.NoHeader,
                                     names=['start', 'stop'])
     elif start is None and stop is None:
-        bad_times = msid_bad_times.get(msid_self.MSID, [])
+        raise ValueError('filter_times requires 2 args ')
     elif start is None or stop is None:
         raise ValueError('filter_times requires either 2 args '
                          '(start, stop) or no args')
@@ -231,6 +279,4 @@ def filter_bad_times(msid_self, start=None, stop=None, table=None):
     for colname in colnames:
         attr = getattr(msid_self, colname)
         if isinstance(attr, np.ndarray):
-            setattr(msid_self, colname, attr[ok])
-
-    
+            setattr(msid_self, colname, attr[ok])       

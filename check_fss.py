@@ -1,213 +1,149 @@
 import asciitable
 import matplotlib.pyplot as plt
 import numpy as np
-from Ska.Matplotlib import plot_cxctime
+from Ska.Matplotlib import plot_cxctime, cxctime2plotdate
 import Ska.engarchive.fetch_eng as fetch
 from Chandra.Time import DateTime
+
+from bad_times import bad_times
 
 SAFEMODE_2012150 = '2012:150:03:33:29'
 
 plt.rc('legend', fontsize=10)
 
-
-def plot_2008246_event(id='a', savefig=False):
-    if id == 'a':
-        start = '2008:246:02:00:00'
-        stop = '2008:246:03:00:00'
-    else:
-        start = '2008:246:13:20:00'
-        stop = '2008:246:13:45:00'
-    dat = fetch.MSIDset(['aoalpang', 'aosunprs', 'pitch'],
-                        start, stop)
-    dat.interpolate(1.025, filter_bad=True)
-    plt.figure(6)
-    plt.clf()
-    plt.subplot(2, 1, 1)
-    plot_cxctime(dat['aoalpang'].times, dat['aoalpang'].vals, '.',
-                 label='Sun not present')
-    plot_cxctime(dat['aoalpang'].times, dat['aoalpang'].vals)
-    ok = dat['aosunprs'].vals == 'SUN '
-    plot_cxctime(dat['aoalpang'].times[ok], dat['aoalpang'].vals[ok],
-                 '.r', ms=12, mec='r', label='Sun present')
-    plt.title('Bad Alpha angles with sun presence on 2008:246')
-    plt.ylabel('AOALPANG (deg)')
-    plt.legend(loc='upper left')
-    plt.grid()
-    plt.subplot(2, 1, 2)
-    plot_cxctime(dat['pitch'].times, dat['pitch'].vals, '.')
-    plt.title('Pitch angle')
-    plt.ylabel('pitch (deg)')
-    plt.grid()
-    plt.tight_layout()
-    if savefig:
-        plt.savefig('event_2008246{}.png'.format(id))
-
-
-def plot_altitude(out, ephems=None, angle_err_lim=8.0, savefig=False):
-    times = out['times']
-    alpha_err = out['alpha'] - out['roll']
-    alpha_sun = out['alpha_sun']
-    beta_sun = out['beta_sun']
-    bad = alpha_sun & beta_sun & (abs(alpha_err) > angle_err_lim)
-    if ephems is None:
-        ephems = fetch.Msidset(['orbitephem1_*'], times[0], times[-1])
-    ephems.interpolate(out['times'][1] - out['times'][0])
-    alt_km = np.sqrt(ephems['orbitephem1_x'].vals ** 2 +
-                     ephems['orbitephem1_y'].vals ** 2 +
-                     ephems['orbitephem1_z'].vals ** 2) / 1000.0
-    idxs = np.searchsorted(ephems.times, times[bad])
-    idxs = idxs[idxs < len(ephems.times)]
-    plt.figure(10)
-    plt.clf()
-    plot_cxctime(ephems.times, alt_km, ',', color='c', mec='c')
-    plot_cxctime(ephems.times[idxs], alt_km[idxs], '.',
-                color='b', mec='b', ms=3)
-    plt.title('Orbit radius for bad FSS data')
-    plt.ylabel('Orbit radius (km)')
-    if savefig:
-        plt.savefig('orbit_bad_fss.png')
-    return ephems, alt_km, bad, idxs
-
-
-def plot_fss_temp(out, tfss=None, angle_err_lim=8.0, savefig=False):
-    times = out['times']
-    alpha_err = out['alpha'] - out['roll']
-    alpha_sun = out['alpha_sun']
-    beta_sun = out['beta_sun']
-    bad = alpha_sun & beta_sun & (abs(alpha_err) > angle_err_lim)
-    if tfss is None:
-        tfss = fetch.Msidset(['tfssbkt1'], times[0], times[-1])
-        tfss.interpolate(out['times'][1] - out['times'][0])
-    idxs = np.searchsorted(tfss.times, times[bad])
-    idxs = idxs[idxs < len(tfss.times)]
-    plt.figure(11)
-    plt.clf()
-    tfssbkt1 = tfss['tfssbkt1'].vals
-    plot_cxctime(tfss.times, tfssbkt1, ',', color='c', mec='c')
-    plot_cxctime(tfss.times[idxs], tfssbkt1[idxs], '.',
-                color='b', mec='b', ms=3)
-    plt.title('FSS temperature for bad FSS data')
-    plt.ylabel('Temperature (degF)')
-    if savefig:
-        plt.savefig('fss_temp_bad_fss.png')
-
-    plt.figure(12)
-    plt.clf()
-    plt.subplot(2, 1, 1)
-    n, bins, p = plt.hist(tfssbkt1, bins=30)
-    plt.title('Histogram of all TFSSBKT1 values (2011:001 - 2012:150)')
-    plt.grid()
-    plt.subplot(2, 1, 2)
-    plt.hist(tfssbkt1[idxs], bins=bins)
-    plt.title('Histogram of TFSSBKT1 values for bad FSS data')
-    plt.grid()
-    plt.xlabel('TFSSBKT1 temperature (degF)')
-    plt.tight_layout()
-    if savefig:
-        plt.savefig('fss_temp_hist.png')
-
-    import scipy.stats
-    print scipy.stats.ks_2samp(tfssbkt1, tfssbkt1[idxs])
-
-    return tfss
-
-
-def plot_pitches(out, angle_err_lim=8.0, savefig=False):
-    times = out['times']
+def plot_pitches(out, angle_err_lim=8.0, savefigs=False):
+    times= out['times']
     pitch = out['pitch']
     alpha_err = out['alpha'] - out['roll']
-    alpha_sun = out['alpha_sun']
-    beta_sun = out['beta_sun']
+    sun = out['alpha_sun'] & out['beta_sun']
+    kalman = out['kalman']
+    bad = abs(alpha_err) > angle_err_lim
 
-    for i, title, xlabel, ylabel in (
-        (1, 'Pitch for bad value & sun presence True', None, 'Pitch (deg)'),
-        (2, 'Pitch when alpha sun presence is False', None, 'Pitch (deg)'),
-        (3, 'Pitch when beta sun presence is False', None, 'Pitch (deg)')):
-        plt.figure(i)
-        plt.clf()
-        plt.grid()
-        plt.title(title)
-        plt.ylabel(ylabel)
-        if xlabel:
-            plt.xlabel(xlabel)
+    # Sun Presence
+    zipvals = zip((~sun, sun),
+                  ('c.', 'r.'),
+                  ('c', 'r'),
+                  ('No Sun Presence', 'Sun Presence'))
+    figure(1)
+    for filt, mark, mec, label in zipvals:
+        plot_cxctime(times[bad & filt], pitch[bad & filt], mark, 
+                     mec=mec, label=label)
+        legend(loc='lower left')
+        grid('on') 
+        title("Pitch Angles when Alpha's Error > " + str(angle_err_lim) + 
+              " deg \n Sun Presence vs No Sun Presence")
+        ylabel("Pitch Angle [deg]")    
+    if savefigs==True:  savefig('pitches_sunprs.png')
+    
+    # Kalman
+    zipvals = zip((~kalman, kalman),
+                  ('c.', 'r.'),
+                  ('c', 'r'),
+                  ('Not Kalman', 'Kalman'))
+    figure(2)
+    for filt, mark, mec, label in zipvals:
+        plot_cxctime(times[bad & filt], pitch[bad & filt], mark, 
+                     mec=mec, label=label)
+        legend(loc='lower left')
+        grid('on') 
+        title("Pitch Angles when Alpha's Error > " + str(angle_err_lim) + 
+              " deg \n Kalman vs Not Kalman")
+        ylabel("Pitch Angle [deg]")  
+    if savefigs==True:  savefig('pitches_kalm.png')
+   
+   
+def plot_temps(out, angle_err_lim=8.0, savefigs=False):
+    print('Warning:  These plots assume 138 < pitch < 140.5 and data from 2011:001 - 2012:150')
+    times= out['times']
+    bkt_temp1 = out['bkt_temp1']
+    bkt_temp2 = out['bkt_temp2']
+    tcylaft6 = out['tcylaft6']
+    fsse_temp = out['fsse_temp']
+    alpha_err = out['alpha'] - out['roll']
+    bad = abs(alpha_err) > angle_err_lim
 
-    zipvals = zip((~out['kalman'],
-                    out['kalman']),
-                  (dict(color='c', mec='c'),  # Not Kalman, No sun presence
-                   dict(color='r', mec='r')),  # Kalman, No sun presence
-                  (dict(color='b', mec='b', fmt='o'),
-                   dict(color='r', mec='r', fmt='x', mew=2)),
-                  ('Not Kalman (cyan)',
-                   'Kalman (red)'))
-    for filt, opt1, opt2, label in zipvals:
-        plt.figure(1)
-        ok = filt & ~alpha_sun
-        plot_cxctime(times[ok], pitch[ok], ',',
-                     label=label, **opt1)
-
-        ok = filt & alpha_sun & beta_sun & (abs(alpha_err) > angle_err_lim)
-        if sum(ok) > 0:
-            plot_cxctime(times[ok], pitch[ok],
-                         label='Bad & sun presence True',
-                         **opt2)
-
-        plt.figure(2)
-        ok = filt & ~alpha_sun
-        plot_cxctime(times[ok], pitch[ok], ',',
-                     label=label, **opt1)
-
-        plt.figure(3)
-        ok = filt & ~beta_sun
-        plot_cxctime(times[ok], pitch[ok], ',',
-                     label=label, **opt1)
-
-    suffs = ('bad_alpha_sun', 'alpha_no_sun', 'beta_no_sun')
-    for i, suff in enumerate(suffs):
-        plt.figure(i + 1)
-        x0, x1 = plt.xlim()
-        dx = (x1 - x0) / 20
-        plt.xlim(x0 - dx, x1 + dx)
-        y0, y1 = plt.ylim()
-        y0 = min(y0, 133.5)
-        dy = (y1 - y0) / 20
-        plt.ylim(y0 - dy, y1 + dy)
-
-        plt.legend(loc='best')
-        if savefig:
-            ident = savefig if isinstance(savefig, basestring) else ''
-            plt.savefig('pitch_' + ident + suff + '.png')
-
-
-def plot_angle_err(out, axis='alpha'):
-    taxis = axis.title()
-    sc = {'alpha': 'roll', 'beta': 'pitch'}
-    ok = out['alpha_sun'] & out['beta_sun']
-    nok = ~ok
-    plt.grid()
-    plt.title('')
-    plt.plot(out['pitch'][nok], out[axis][nok] - out[sc[axis]][nok], ',b',
-             mec='b')
-    if axis == 'beta':
-        plt.xlabel('Pitch (deg)')
-    plt.ylabel('Angle err (deg)')
-    plt.title('{} angle error vs. pitch (AOSUNPRS=NSUN)'.format(taxis))
-
-
-def plot_angle_errs(out, savefig=False):
-    plt.figure(4)
-    plt.clf()
-    plt.subplot(2, 1, 1)
-    plot_angle_err(out, axis='alpha')
-    plt.subplot(2, 1, 2)
-    plot_angle_err(out, axis='beta')
-    if savefig:
-        plt.savefig('angle_err.png')
+    zipvals = zip((bkt_temp1, bkt_temp2, tcylaft6, fsse_temp),
+                  ('Bracket Temp 1', 'Bracket Temp 2', 'TCYLAFT6', 'FSS Electronics Temp'),
+                  (3, 4, 5, 6),
+                  ('temp_bkt1', 'temp_bkt2', 'temp_tcylaft6', 'temp_fsse'))
+    for msid, name, fig, figprefix in zipvals:
+        figure(fig, figsize=(8,11))
+        subplot(2,1,1)
+        hist_all = hist(msid, log=True, bins=50, range=(msid.min(), msid.max()), color='b', 
+                   label='All Points (2011:001 - 2012:150, 138 < pitch < 140.5)')
+        hist_bad = hist(msid[bad], log=True, bins=50, range=(msid.min(), msid.max()), color='r', 
+                   label='Above + Alpha Error > ' + str(angle_err_lim) + ' deg')
+        ylim(10**-1, 10**6)
+        grid()
+        title(name)
+        xlabel('Deg F')
+        legend()
+        x = xlim()
+        subplot(2,1,2)
+        if all(hist_all[1] == hist_bad[1]):
+            ratio = 100 * hist_bad[0].astype(float) / hist_all[0]
+            midpts = hist_all[1][:-1] + (hist_all[1][1] - hist_all[1][0]) / 2
+            plot(midpts, ratio, 'r-*')
+            title('Likelihood of Bad Data (Alpha Error > ' + str(angle_err_lim) + ' deg) \n' + 
+                  'vs ' + name)
+            xlabel(name + ' (deg F)')
+            ylabel('Likelihood of Bad Data (%)')
+            ylim(0,100)
+            grid()
+            tight_layout()
+            xlim(x)
+        else:  print('Warning:  Histogram bins did not match up.')
+        if savefigs==True:  
+            savefig(figprefix + '_log.png')
 
 
-def get_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
-             pitch0=100, pitch1=144):
+def plot_binary(out, angle_err_lim=8.0, savefigs=False):
+    print('Warning:  This plot should only be used when interp=4.1 sec')
+    alpha_err = out['alpha'] - out['roll']
+    bad = abs(alpha_err) > angle_err_lim
+    alpha_raw = out['alpha_raw'].tolist()
+    alpha_binary = [bin(raw)[2:].zfill(16) for raw in alpha_raw]
+    sun_prs = array([bits[0]=='1' for bits in alpha_binary])
+    alpha_array = array([array(list(bits)).astype(int) for bits in alpha_binary])
+    # First Figure:  Transitions to Bad Data
+    figure()
+    just_before_bad = append(~bad[:-1] & bad[1:], False)
+    just_went_bad = insert(~bad[:-1] & bad[1:],0,False)
+    bits_just_before_bad = alpha_array[just_before_bad]
+    bits_just_went_bad = alpha_array[just_went_bad]
+    bits_different = bits_just_before_bad != bits_just_went_bad
+    bits_flipped = sum(bits_different, 0)
+    total_num_events = float(sum(just_went_bad))
+    bar(range(15, -1, -1), 100 * bits_flipped / total_num_events, align='center', color='m')
+    title('Bit Analysis for AOALPHA \n (AOALPHA = Root MSID for AOALPANG and AOALPSUN)')
+    ylabel('% of time bit changed when alpha angle went > ' + str(angle_err_lim) + ' deg')
+    xlabel('Bit in AOALPHA \n' + 
+           'bit 0 = angle LSB, bit 14 = angle MSB, bit 15 = sun presence')
+    grid()
+    ylim((0,100))
+    if savefigs==True:  
+        savefig('bit_analysis_bad.png')
+    # Second Figure:  In general
+    figure()
+    bits_different_gen = alpha_array[1:] != alpha_array[:-1]
+    bits_flipped_gen = sum(bits_different_gen, 0)
+    total_num_events_gen = float(size(alpha_array, 0) - 1)
+    bar(range(15, -1, -1), 100 * bits_flipped_gen / total_num_events_gen, align='center', color='orange')
+    title('Bit Analysis for AOALPHA \n (AOALPHA = Root MSID for AOALPANG and AOALPSUN)')
+    ylabel('% of time bit changed in general')
+    xlabel('Bit in AOALPHA \n' + 
+           'bit 0 = angle LSB, bit 14 = angle MSB, bit 15 = sun presence')
+    grid()
+    ylim((0,100))
+    if savefigs==True:  
+        savefig('bit_analysis_gen.png')
+    
+    
+def get_fss_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
+             pitch0=134, pitch1=144):
     msids = ('aopssupm', 'aopcadmd', 'aoacaseq', 'pitch', 'roll',
-             'aoalpang', 'aobetang', 'aoalpsun', 'aobetsun')
+             'aoalpang', 'aobetang', 'aoalpsun', 'aobetsun',
+             'tfssbkt1', 'tfssbkt2', 'tcylaft6', 'tpc_fsse', 'aoalpha')
     print 'fetching data'
     x = fetch.MSIDset(msids, start, stop)
 
@@ -239,10 +175,14 @@ def get_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
     nvals = np.sum(ok)
     colnames = ('times',
                 'pitch', 'roll', 'alpha', 'beta',
-                'alpha_sun', 'beta_sun', 'spm_act', 'spm_act_bad', 'kalman')
+                'bkt_temp1', 'bkt_temp2', 'tcylaft6', 'fsse_temp',
+                'alpha_sun', 'beta_sun', 'spm_act', 'spm_act_bad', 'kalman',
+                'alpha_raw')
     dtypes = ('f8',
               'f4', 'f4', 'f4', 'f4',
-              'bool', 'bool', 'bool', 'bool', 'bool', 'bool')
+              'f4', 'f4', 'f4', 'f4',
+              'bool', 'bool', 'bool', 'bool', 'bool', 
+              'uint16')
     out = np.empty(nvals, dtype=zip(colnames, dtypes))
 
     out['times'][:] = x['pitch'].times[ok]
@@ -250,12 +190,17 @@ def get_data(start='2005:001', stop=SAFEMODE_2012150, interp=32.8,
     out['roll'][:] = x['roll'].vals[ok]
     out['alpha'][:] = -x['aoalpang'].vals[ok]
     out['beta'][:] = 90 - x['aobetang'].vals[ok]
+    out['bkt_temp1'][:] = x['tfssbkt1'].vals[ok]
+    out['bkt_temp2'][:] = x['tfssbkt2'].vals[ok]
+    out['tcylaft6'][:] = x['tcylaft6'].vals[ok]
+    out['fsse_temp'][:] = x['tpc_fsse'].vals[ok]    
     out['alpha_sun'][:] = x['aoalpsun'].vals[ok] == 'SUN '
     out['beta_sun'][:] = x['aobetsun'].vals[ok] == 'SUN '
     out['spm_act'][:] = x['aopssupm'].vals[ok] == 'ACT '
     out['spm_act_bad'][:] = x['aopssupm'].bads[ok]
     out['kalman'][:] = ((x['aoacaseq'].vals[ok] == 'KALM') &
                         (x['aopcadmd'].vals[ok] == 'NPNT'))
+    out['alpha_raw'][:] = x['aoalpha'].vals[ok]                    
     return out
 
 
