@@ -166,6 +166,16 @@ def plot_css_errors_by_year(out, savefigs=False):
         t = t + dt
         yr = yr + 1
 
+
+def plot_css_errors_thru_time(out, savefigs=False, pitch_bin=90, roll_bin=0):
+    ok = ~out['eclipse'] 
+    times= out['times'][ok]
+    css_pitch_err = out['pitch_css'][ok] - out['pitch'][ok]
+    css_roll_err = out['roll_css'][ok] - out['roll'][ok]
+    css_err = sqrt(css_pitch_err**2 + css_roll_err**2)
+    pitch = out['pitch'][ok]
+    roll = out['roll'][ok]
+    
       
 def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
              pitch0=45, pitch1=180):
@@ -212,11 +222,11 @@ def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
     out = np.empty(nvals, dtype=zip(colnames, dtypes))
     
     # Define eclipse flag using ephemeris data
-    # Add .5 angular degree buffer since ephemeris data only at 5 min intervals
+    # Add 2 angular degree buffer since ephemeris data only at 5 min intervals
     rad_earth = 6378100 
     ang_rad_earth = arctan(rad_earth / x['Dist_SatEarth'].vals[ok]) * 180 / pi
     ang_rad_sun = .25 
-    eclipse = x['Sun_EarthCentAng'].vals[ok] < ang_rad_earth + ang_rad_sun + .5
+    eclipse = x['Sun_EarthCentAng'].vals[ok] < ang_rad_earth + ang_rad_sun + 2
 
     # Define low altitude as being below 25,000 km
     low_alt = x['Dist_SatEarth'].vals[ok] < 25000000
