@@ -9,17 +9,14 @@ from bad_times import bad_times
 
 SAFEMODE_2012150 = '2012:150:03:33:29'
 
-def plot_spm_input_errs(out, savefigs=False):
+def plot_fss_errors(out, savefigs=False):
     ok = ~out['spm_act_bad']
     times= out['times'][ok]
     spm_act = out['spm_act'][ok]
-    sun_prs = out['alpha_sun'][ok] & out['beta_sun'][ok] 
+    sun_prs = out['alpha_sun'][ok] & out['beta_sun'][ok]
     fss_pitch_err = out['beta'][ok] - out['pitch'][ok]
     fss_roll_err = out['alpha'][ok] - out['roll'][ok]
     fss_err = sqrt(fss_pitch_err**2 + fss_roll_err**2)
-    css_pitch_err = out['pitch_css'][ok] - out['pitch'][ok]
-    css_roll_err = out['roll_css'][ok] - out['roll'][ok]
-    css_err = sqrt(css_pitch_err**2 + css_roll_err**2)
     pitch = out['pitch'][ok]
     roll = out['roll'][ok]
     print 'Points w/o sun presence:'
@@ -61,35 +58,47 @@ def plot_spm_input_errs(out, savefigs=False):
     if savefigs==True:
         savefig('spm_fss_errors_vs_time2.png')
 
+        
+def plot_css_errors(out, savefigs=False):
+    ok = ~out['spm_act_bad'] & ~out['eclipse'] & ~out['low_alt']
+    times= out['times'][ok]
+    spm_act = out['spm_act'][ok]
+    eclipse = out['eclipse'][ok]
+    low_alt = out['low_alt'][ok]
+    css_pitch_err = out['pitch_css'][ok] - out['pitch'][ok]
+    css_roll_err = out['roll_css'][ok] - out['roll'][ok]
+    css_err = sqrt(css_pitch_err**2 + css_roll_err**2)
+    pitch = out['pitch'][ok]
+    roll = out['roll'][ok]
     
     #Plot CSS Errors vs Time
     figure()
-    plot_cxctime(times[sun_prs & ~spm_act], css_err[sun_prs & ~spm_act], 'b.',
-                 mec='b', label='SPM Disabled')
-    plot_cxctime(times[sun_prs & spm_act], css_err[sun_prs & spm_act], 'r.',
-                 mec='r', label='SPM Enabled')
+    plot_cxctime(times[~spm_act], css_err[~spm_act], 
+                 'b.', mec='b', label='SPM Disabled')
+    plot_cxctime(times[spm_act ], css_err[spm_act], 
+                 'r.', mec='r', label='SPM Enabled')
     legend(loc='upper left')
     grid()
     ylabel('CSS Error [deg]')
-    title('Total CSS Error (with FSS Sun Presence) \n fed into Sun Position Monitor') 
+    title('Total CSS Error (excluding eclipses and low altitudes) \n fed into Sun Position Monitor') 
     if savefigs==True:
         savefig('spm_css_errors_vs_time.png')
     
     figure()
     subplot(2, 1, 1)
-    plot_cxctime(times[sun_prs & ~spm_act], css_roll_err[sun_prs & ~spm_act], 'b.', 
-                 mec='b', label='SPM Disabled')
-    plot_cxctime(times[sun_prs & spm_act], css_roll_err[sun_prs & spm_act], 'r.', 
-                 mec='r', label='SPM Enabled')
+    plot_cxctime(times[~spm_act], css_roll_err[~spm_act],  
+                 'b.', mec='b', label='SPM Disabled')
+    plot_cxctime(times[spm_act], css_roll_err[spm_act],  
+                 'r.', mec='r', label='SPM Enabled')
     legend(loc='upper left')
     grid()
     ylabel('CSS Roll Error [deg]')
-    title('CSS Roll and Pitch Errors (with Sun Presence) \n fed into Sun Position Monitor')    
+    title('CSS Roll and Pitch Errors (excluding eclipses and low altitudes) \n fed into Sun Position Monitor')    
     subplot(2, 1, 2)
-    plot_cxctime(times[sun_prs & ~spm_act], css_pitch_err[sun_prs & ~spm_act], 'b.', 
-                 mec='b', label='SPM Disabled')
-    plot_cxctime(times[sun_prs & spm_act], css_pitch_err[sun_prs & spm_act], 'r.', 
-                 mec='r', label='SPM Enabled')
+    plot_cxctime(times[~spm_act], css_pitch_err[~spm_act], 
+                 'b.', mec='b', label='SPM Disabled')
+    plot_cxctime(times[spm_act], css_pitch_err[spm_act], 
+                 'r.', mec='r', label='SPM Enabled')
     legend(loc='upper left')
     grid()
     ylabel('CSS Pitch Error [deg]')
@@ -103,26 +112,16 @@ def plot_spm_input_errs(out, savefigs=False):
     c.set_label('CSS Error [deg]')
     xlabel('Roll [deg]')
     ylabel('Pitch [deg]')
-    title('CSS Errors vs Attitude')
+    title('CSS Errors vs Attitude \n (Excludes eclipses and low altitudes)')
     grid()
     if savefigs==True:
         savefig('spm_css_errors_vs_att.png')
-        
-    #Plot Attitudes vs Time
-    figure()
-    scatter(css_roll_err, css_pitch_err, c=times, edgecolors='none')
-    c = colorbar()
-    xlabel('Roll (deg)')
-    ylabel('Pitch (deg)')
-    title('CSS Errors vs Time')
-    grid()
-    if savefigs==True:
-        savefig('spm_something.png')
 
-def plot_css_errs_by_year(out, savefigs=False):
+
+def plot_css_errors_by_year(out, savefigs=False):
     if min(out['times']) > 63158464:
         print('Warning:  plot_css_errs_by_year assumes a start time of 2000:001')
-    ok = ones(len(out)).astype(bool)
+    ok = ~out['eclipse'] & ~out['low_alt']
     times= out['times'][ok]
     css_pitch_err = out['pitch_css'][ok] - out['pitch'][ok]
     css_roll_err = out['roll_css'][ok] - out['roll'][ok]
@@ -166,12 +165,13 @@ def plot_css_errs_by_year(out, savefigs=False):
         
         t = t + dt
         yr = yr + 1
-    
+
+      
 def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
              pitch0=45, pitch1=180):
     msids = ('aopssupm', 'aopcadmd', 'aoacaseq', 'pitch', 'roll',
              'aoalpang', 'aobetang', 'aoalpsun', 'aobetsun',
-             'pitch_css', 'roll_css')
+             'pitch_css', 'roll_css', 'Dist_SatEarth', 'Sun_EarthCentAng')
     print 'fetching data'
     x = fetch.MSIDset(msids, start, stop)
 
@@ -203,11 +203,23 @@ def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
     nvals = np.sum(ok)
     colnames = ('times',
                 'pitch', 'roll', 'alpha', 'beta', 'pitch_css', 'roll_css',
-                'alpha_sun', 'beta_sun', 'spm_act', 'spm_act_bad', 'kalman')
+                'alpha_sun', 'beta_sun', 'spm_act', 
+                'spm_act_bad', 'kalman', 'eclipse', 'low_alt')
     dtypes = ('f8',
               'f4', 'f4', 'f4', 'f4', 'f4', 'f4',
-              'bool', 'bool', 'bool', 'bool', 'bool')
+              'bool', 'bool', 'bool', 
+              'bool', 'bool', 'bool', 'bool')
     out = np.empty(nvals, dtype=zip(colnames, dtypes))
+    
+    # Define eclipse flag using ephemeris data
+    # Add .5 angular degree buffer since ephemeris data only at 5 min intervals
+    rad_earth = 6378100 
+    ang_rad_earth = arctan(rad_earth / x['Dist_SatEarth'].vals[ok]) * 180 / pi
+    ang_rad_sun = .25 
+    eclipse = x['Sun_EarthCentAng'].vals[ok] < ang_rad_earth + ang_rad_sun + .5
+
+    # Define low altitude as being below 25,000 km
+    low_alt = x['Dist_SatEarth'].vals[ok] < 25000000
 
     out['times'][:] = x['pitch'].times[ok]
     out['pitch'][:] = x['pitch'].vals[ok]
@@ -222,6 +234,8 @@ def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
     out['spm_act_bad'][:] = x['aopssupm'].bads[ok]
     out['kalman'][:] = ((x['aoacaseq'].vals[ok] == 'KALM') &
                         (x['aopcadmd'].vals[ok] == 'NPNT'))
+    out['eclipse'][:] = eclipse    
+    out['low_alt'][:] = low_alt
     return out
 
 
@@ -281,3 +295,4 @@ def filter_bad_times(msid_self, start=None, stop=None, table=None):
         attr = getattr(msid_self, colname)
         if isinstance(attr, np.ndarray):
             setattr(msid_self, colname, attr[ok])       
+            
