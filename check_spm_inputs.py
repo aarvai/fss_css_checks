@@ -167,15 +167,29 @@ def plot_css_errors_by_year(out, savefigs=False):
         yr = yr + 1
 
 
-def plot_css_errors_thru_time(out, savefigs=False, pitch_bin=90, roll_bin=0):
-    ok = ~out['eclipse'] 
+def plot_css_errors_bin(out, savefigs=False, pitch_bin=90, roll_bin=0):
+    ok = ~out['eclipse'] & ~out['low_alt']
     times= out['times'][ok]
     css_pitch_err = out['pitch_css'][ok] - out['pitch'][ok]
     css_roll_err = out['roll_css'][ok] - out['roll'][ok]
     css_err = sqrt(css_pitch_err**2 + css_roll_err**2)
     pitch = out['pitch'][ok]
     roll = out['roll'][ok]
+    bin = (abs(pitch - pitch_bin) < 1) & (abs(roll - roll_bin) < 1)
     
+    figure()    
+    subplot(2, 1, 1)
+    plot_cxctime(times[bin], abs(css_roll_err[bin]), '.')
+    grid()
+    ylabel('CSS Roll Error [deg]')
+    title('CSS Roll and Pitch Errors (excluding eclipses and low altitudes) \n' + 
+          'within 1 deg of ' + str(pitch_bin) + ' deg pitch and ' + str(roll_bin) + ' deg roll')    
+    subplot(2, 1, 2)
+    plot_cxctime(times[bin], abs(css_pitch_err[bin]), '.')
+    grid()
+    ylabel('CSS Pitch Error [deg]')
+    if savefigs==True:
+        savefig('spm_css_errors_' + str(pitch_bin) + '_' + str(roll_bin) + '.png')  
       
 def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
              pitch0=45, pitch1=180):
