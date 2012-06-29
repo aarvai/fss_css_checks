@@ -101,7 +101,8 @@ def plot_temps(out, angle_err_lim=8.0, savefigs=False):
 
 
 def plot_binary(out, angle_err_lim=8.0, savefigs=False):
-    if min(diff(out['times'])) > 4.2 or min(diff(out['times'])) < 4.0:
+    times = out['times']
+    if min(diff(times)) > 4.2 or min(diff(times)) < 4.0:
         print('Warning:  plot_binary should only be used when interp=4.1 sec')
     alpha_err = out['alpha'] - out['roll']
     bad = abs(alpha_err) > angle_err_lim
@@ -111,14 +112,15 @@ def plot_binary(out, angle_err_lim=8.0, savefigs=False):
     alpha_array = array([array(list(bits)).astype(int) for bits in alpha_binary])
     # First Figure:  Transitions to Bad Data
     figure()
-    just_before_bad = append(~bad[:-1] & bad[1:], False)
-    just_went_bad = insert(~bad[:-1] & bad[1:],0,False)
+    # Identify "bad" and "just before bad" pairs
+    just_before_bad = append(~bad[:-1] & bad[1:] & (abs(4.1 - (times[1:] - times[:-1])) < .1), False)
+    just_went_bad = insert(~bad[:-1] & bad[1:] & (abs(4.1 - (times[1:] - times[:-1])) < .1), 0, False)
     bits_just_before_bad = alpha_array[just_before_bad]
     bits_just_went_bad = alpha_array[just_went_bad]
     bits_different = bits_just_before_bad != bits_just_went_bad
     bits_flipped = sum(bits_different, 0)
     total_num_events = float(sum(just_went_bad))
-    bar(range(15, -1, -1), 100 * bits_flipped / total_num_events, align='center', color='m')
+    bar(range(15, -1, -1), 100.0 * bits_flipped / total_num_events, align='center', color='m')
     title('Bit Analysis for AOALPHA \n (AOALPHA = Root MSID for AOALPANG and AOALPSUN)')
     ylabel('% of time bit changed when alpha angle went > ' + str(angle_err_lim) + ' deg')
     xlabel('Bit in AOALPHA \n' + 
@@ -130,9 +132,10 @@ def plot_binary(out, angle_err_lim=8.0, savefigs=False):
     # Second Figure:  In general
     figure()
     bits_different_gen = alpha_array[1:] != alpha_array[:-1]
-    bits_flipped_gen = sum(bits_different_gen, 0)
-    total_num_events_gen = float(size(alpha_array, 0) - 1)
-    bar(range(15, -1, -1), 100 * bits_flipped_gen / total_num_events_gen, align='center', color='orange')
+    has_immediate_update = abs(4.1 - (times[1:] - times[:-1])) < .1
+    bits_flipped_gen = sum(bits_different_gen[has_immediate_update], 0)
+    total_num_events_gen = sum(has_immediate_update)
+    bar(range(15, -1, -1), 100.0 * bits_flipped_gen / total_num_events_gen, align='center', color='orange')
     title('Bit Analysis for AOALPHA \n (AOALPHA = Root MSID for AOALPANG and AOALPSUN)')
     ylabel('% of time bit changed in general')
     xlabel('Bit in AOALPHA \n' + 
