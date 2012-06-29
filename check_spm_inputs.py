@@ -35,7 +35,7 @@ def plot_fss_errors(out, savefigs=False):
     ylabel('FSS Error [deg]')
     title('Total FSS Error (with Sun Presence) \n fed into Sun Position Monitor')    
     if savefigs==True:
-        savefig('spm_fss_errors_vs_time.png')
+        savefig('fss_errors_vs_time.png')
     
     figure()
     subplot(2, 1, 1)
@@ -56,7 +56,7 @@ def plot_fss_errors(out, savefigs=False):
     grid()
     ylabel('FSS Pitch Error [deg]')
     if savefigs==True:
-        savefig('spm_fss_errors_vs_time2.png')
+        savefig('fss_errors_vs_time2.png')
 
         
 def plot_css_errors(out, savefigs=False):
@@ -82,7 +82,7 @@ def plot_css_errors(out, savefigs=False):
     ylabel('CSS Error [deg]')
     title('Total CSS Error (excluding eclipses and low altitudes) \n fed into Sun Position Monitor') 
     if savefigs==True:
-        savefig('spm_css_errors_vs_time.png')
+        savefig('css_errors_vs_time.png')
     
     figure()
     subplot(2, 1, 1)
@@ -103,20 +103,24 @@ def plot_css_errors(out, savefigs=False):
     grid()
     ylabel('CSS Pitch Error [deg]')
     if savefigs==True:
-        savefig('spm_css_errors_vs_time2.png')    
+        savefig('css_errors_vs_time2.png')    
+    
+    zipvals = zip((css_err, css_roll_err, css_pitch_err),
+                  ('Total CSS Error', 'CSS Roll Error', 'CSS Pitch Error'),
+                  ('css_errors', 'css_roll_errors', 'css_pitch_errors'))
     
     #Plot CSS Errors vs Attitude
-    figure()
-    scatter(roll, pitch, c=css_err, edgecolors='none')
-    c = colorbar()
-    c.set_label('CSS Error [deg]')
-    xlabel('Roll [deg]')
-    ylabel('Pitch [deg]')
-    title('CSS Errors vs Attitude \n (Excludes eclipses and low altitudes)')
-    grid()
-    if savefigs==True:
-        savefig('spm_css_errors_vs_att.png')
-
+    for var, name, plot_name in zipvals:
+        figure()
+        scatter(roll, pitch, c=var, edgecolors='none')
+        c = colorbar()
+        c.set_label(name + ' [deg]')
+        xlabel('Roll [deg]')
+        ylabel('Pitch [deg]')
+        title(name + ' vs Attitude \n (Excludes eclipses and low altitudes)')
+        grid()
+        if savefigs==True:
+            savefig(plot_name + '_vs_att.png')
 
 def plot_css_errors_by_year(out, savefigs=False):
     if min(out['times']) > 63158464:
@@ -137,7 +141,7 @@ def plot_css_errors_by_year(out, savefigs=False):
       
         figure()
         scatter(roll[i], pitch[i], c=css_roll_err[i], edgecolors='none')
-        title(str(2000 + yr) + ' CSS Roll Errors')
+        title(str(2000 + yr) + ' CSS Roll Errors \n (Excludes eclipses and low altitudes)')
         xlabel('Roll Angle [deg]')
         ylabel('Pitch Angle [deg]')
         c = colorbar()
@@ -151,7 +155,7 @@ def plot_css_errors_by_year(out, savefigs=False):
         
         figure()
         scatter(roll[i], pitch[i], c=css_pitch_err[i], edgecolors='none')
-        title(str(2000 + yr) + ' FSS Pitch Errors')
+        title(str(2000 + yr) + ' FSS Pitch Errors \n (Excludes eclipses and low altitudes)')
         xlabel('Roll Angle [deg]')
         ylabel('Pitch Angle [deg]')
         c = colorbar()
