@@ -193,8 +193,9 @@ def plot_css_errors_bin(out, savefigs=False, pitch_bin=90, roll_bin=0):
     grid()
     ylabel('CSS Pitch Error [deg]')
     if savefigs==True:
-        savefig('spm_css_errors_' + str(pitch_bin) + '_' + str(roll_bin) + '.png')  
-      
+        savefig('css_errors_' + str(pitch_bin) + '_' + str(roll_bin) + '.png')  
+    
+    
 def get_spm_data(start='2000:001', stop=SAFEMODE_2012150, interp=32.8,
              pitch0=45, pitch1=180):
     msids = ('aopssupm', 'aopcadmd', 'aoacaseq', 'pitch', 'roll',
